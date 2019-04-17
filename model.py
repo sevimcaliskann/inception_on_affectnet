@@ -20,7 +20,7 @@ class ResNet_Train():
         print("Initializing Datasets and Dataloaders...")
 
         self._opt = Options().parse()
-        self.model, image_size = initialize_model('resnet', 2, feature_extract=False, use_pretrained=False)
+        self.model, image_size = initialize_model('inception', 2, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
         data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
@@ -33,12 +33,12 @@ class ResNet_Train():
         print('#test images = %d' % self._dataset_test_size)
 
         # Detect if we have a GPU available
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self._save_path = os.path.join(self._opt.checkpoints_dir, opt.name)
         self._writer = SummaryWriter(self._save_path)
 
 
-        self.model = self.model.to(device)
+        self.model = self.model.to(self.device)
         #scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
@@ -56,10 +56,8 @@ class ResNet_Train():
         best_model_wts = copy.deepcopy(model.state_dict())
         best_acc = 0.0
 
-        number_iters_train = len(dataloaders['train'])/self._opt.batch_size
-        number_iters_val = len(dataloaders['val'])/self._opt.batch_size
-        train_i = 0
-        val_i = 0
+        #number_iters_train = len(dataloaders['train'])/self._opt.batch_size
+        #number_iters_val = len(dataloaders['val'])/self._opt.batch_size
 
         for epoch in range(num_epochs):
             print('Epoch {}/{}'.format(epoch, num_epochs - 1))
@@ -76,9 +74,9 @@ class ResNet_Train():
                 running_corrects = 0
 
                 # Iterate over data.
-                for inputs, labels in dataloaders[phase]:
-                    inputs = inputs.to(device)
-                    labels = labels.to(device)
+                for i_train_batch, train_batch in enumerate(dataloaders[phase]):
+                    inputs = train_batch['img'].to(self.device)
+                    labels = train_batch['cond'].to(self.device)
 
                     # zero the parameter gradients
                     optimizer.zero_grad()
@@ -115,11 +113,10 @@ class ResNet_Train():
 
                     loss_dict = {'loss':batch_loss, 'acc':batch_corrects.double()/self._opt.batch_size}
                     if phase=='train':
-                        self.plot_scalars(loss_dict, i_train*self._opt.batch_size, True)
-                        i_train += 1
+                        self.plot_scalars(loss_dict, (i_train_batch+1)*self._opt.batch_size, True)
                     else:
-                        self.plot_scalars(loss_dict, i_val*self._opt.batch_size, True)
-                        i_val += 1
+                        self.plot_scalars(loss_dict, (i_train_batch+1)*self._opt.batch_size, False)
+
 
 
                 epoch_loss = running_loss / len(dataloaders[phase])
