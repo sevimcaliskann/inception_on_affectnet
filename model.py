@@ -21,7 +21,7 @@ class ResNet_Train():
         print("Initializing Datasets and Dataloaders...")
 
         self._opt = Options().parse()
-        self.model, image_size = initialize_model('inception', 2, feature_extract=False, use_pretrained=False)
+        self.model, image_size = self.initialize_model('inception', 2, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
         data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
@@ -44,7 +44,7 @@ class ResNet_Train():
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
         self.criterion = nn.MSELoss()
-        model = train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
+        model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
         self._save_network(model, 31)
 
 
