@@ -2,7 +2,7 @@ import argparse
 import os
 import torch
 
-class BaseOptions():
+class Options():
     def __init__(self):
         self._parser = argparse.ArgumentParser()
         self._initialized = False

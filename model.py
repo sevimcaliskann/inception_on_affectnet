@@ -12,6 +12,7 @@ import os
 import copy
 from custom_dataset_data_loader import CustomDatasetDataLoader
 from tensorboardX import SummaryWriter
+from options import Options
 
 class ResNet_Train():
     def __init__(self):
