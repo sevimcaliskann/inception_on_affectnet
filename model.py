@@ -104,7 +104,7 @@ class ResNet_Train():
                             outputs = model(self._img)
                             loss = criterion(outputs, self._cond)
 
-                        _, preds = torch.max(outputs, 1)
+                        #_, preds = torch.max(outputs, 1)
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -113,7 +113,7 @@ class ResNet_Train():
 
                     # statistics
                     batch_loss = loss.item()
-                    batch_corrects = torch.sum(preds == self._cond.data)
+                    batch_corrects = torch.sum(torch.abs(outputs-self._cond.data)<0.1)
                     running_loss += batch_loss * self._opt.batch_size
                     running_corrects += batch_corrects
 
