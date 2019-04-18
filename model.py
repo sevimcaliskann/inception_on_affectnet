@@ -158,7 +158,7 @@ class ResNet_Train():
             """ Resnet18
             """
             model_ft = models.resnet18(pretrained=use_pretrained)
-            set_parameter_requires_grad(model_ft, feature_extract)
+            self.set_parameter_requires_grad(model_ft, feature_extract)
             num_ftrs = model_ft.fc.in_features
             model_ft.fc = nn.Linear(num_ftrs, num_classes)
             input_size = 224
@@ -167,7 +167,7 @@ class ResNet_Train():
             """ Alexnet
             """
             model_ft = models.alexnet(pretrained=use_pretrained)
-            set_parameter_requires_grad(model_ft, feature_extract)
+            self.set_parameter_requires_grad(model_ft, feature_extract)
             num_ftrs = model_ft.classifier[6].in_features
             model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
             input_size = 224
@@ -176,7 +176,7 @@ class ResNet_Train():
             """ VGG11_bn
             """
             model_ft = models.vgg11_bn(pretrained=use_pretrained)
-            set_parameter_requires_grad(model_ft, feature_extract)
+            self.set_parameter_requires_grad(model_ft, feature_extract)
             num_ftrs = model_ft.classifier[6].in_features
             model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
             input_size = 224
@@ -194,7 +194,7 @@ class ResNet_Train():
             """ Densenet
             """
             model_ft = models.densenet121(pretrained=use_pretrained)
-            set_parameter_requires_grad(model_ft, feature_extract)
+            self.set_parameter_requires_grad(model_ft, feature_extract)
             num_ftrs = model_ft.classifier.in_features
             model_ft.classifier = nn.Linear(num_ftrs, num_classes)
             input_size = 224
@@ -204,7 +204,7 @@ class ResNet_Train():
             Be careful, expects (299,299) sized images and has auxiliary output
             """
             model_ft = models.inception_v3(pretrained=use_pretrained)
-            set_parameter_requires_grad(model_ft, feature_extract)
+            self.set_parameter_requires_grad(model_ft, feature_extract)
             # Handle the auxilary net
             num_ftrs = model_ft.AuxLogits.fc.in_features
             model_ft.AuxLogits.fc = nn.Linear(num_ftrs, num_classes)
