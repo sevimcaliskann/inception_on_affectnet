@@ -97,6 +97,8 @@ class ResNet_Train():
                         if is_inception and phase == 'train':
                             # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
                             outputs, aux_outputs = model(self._img)
+                            outputs.to(self.device)
+                            aux_outputs.to(self.device)
                             loss1 = criterion(outputs, self._cond)
                             loss2 = criterion(aux_outputs, self._cond)
                             loss = loss1 + 0.4*loss2
