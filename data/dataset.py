@@ -21,7 +21,7 @@ class DatasetFactory:
         return dataset
 
 
-class DatasetBase(Dataset):
+class DatasetBase(data.Dataset):
     def __init__(self, opt, is_for_train):
         super(DatasetBase, self).__init__()
         self._name = 'BaseDataset'
