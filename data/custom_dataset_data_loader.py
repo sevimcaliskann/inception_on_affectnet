@@ -1,5 +1,5 @@
 import torch.utils.data
-from dataset import DatasetFactory
+from .dataset import DatasetFactory
 
 
 class CustomDatasetDataLoader:
