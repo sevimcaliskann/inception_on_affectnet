@@ -113,7 +113,7 @@ class ResNet_Train():
 
                     # statistics
                     batch_loss = loss.item()
-                    batch_corrects = torch.sum(preds == labels.data)
+                    batch_corrects = torch.sum(preds == self._cond.data)
                     running_loss += batch_loss * self._opt.batch_size
                     running_corrects += batch_corrects
 
