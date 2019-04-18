@@ -71,7 +71,7 @@ class MoodDataset(DatasetBase):
         # read ids
         self._ids = self._read_ids(use_ids_filepath)
         self._emos = self._read_info(info_filepath)
-        self._ids = list(set(self._ids).intersection(set(self._moods.keys())))
+        self._ids = list(set(self._ids).intersection(set(self._emos.keys())))
         print('#data: ', len(self._ids))
 
         # dataset size

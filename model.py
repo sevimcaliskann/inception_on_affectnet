@@ -36,8 +36,9 @@ class ResNet_Train():
         # Detect if we have a GPU available
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self._Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
+        self._Target = torch.cuda.LongTensor if torch.cuda.is_available() else torch.Tensor
         self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
-        self._cond = self._Tensor(self._opt.batch_size, 1)
+        self._cond = self._Target(self._opt.batch_size, 1)
         self._save_dir = os.path.join(self._opt.checkpoints_dir, self._opt.name)
         self._writer = SummaryWriter(self._save_dir)
 
