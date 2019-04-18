@@ -23,7 +23,7 @@ class DatasetFactory:
 
 class DatasetBase(Dataset):
     def __init__(self, opt, is_for_train):
-        #super(DatasetBase, self).__init__()
+        super(DatasetBase, self).__init__()
         self._name = 'BaseDataset'
         self._root = None
         self._opt = opt
