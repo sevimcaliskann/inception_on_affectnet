@@ -242,13 +242,13 @@ class ResNet_Train():
             load_path), 'Weights file not found. Have you trained a model!? We are not providing one' % load_path
 
         optimizer.load_state_dict(torch.load(load_path, map_location='cuda:0'))
-        print 'loaded optimizer: %s' % load_path
+        print('loaded optimizer: %s' % load_path)
 
     def _save_network(self, network, epoch_label):
         save_filename = 'net_epoch_%s.pth' % (epoch_label)
         save_path = os.path.join(self._save_dir, save_filename)
         torch.save(network.state_dict(), save_path)
-        print 'saved net: %s' % save_path
+        print('saved net: %s' % save_path)
 
     def _load_network(self, network, epoch_label):
         load_filename = 'net_epoch_%s.pth' % (epoch_label)
@@ -256,7 +256,7 @@ class ResNet_Train():
         assert os.path.exists(
             load_path), 'Weights file not found. Have you trained a model!? We are not providing one' % load_path
         network.load_state_dict(torch.load(load_path, map_location='cuda:0'))
-        print 'loaded net: %s' % load_path
+        print('loaded net: %s' % load_path)
 
 
     def plot_scalars(self, scalars, it, is_train):
