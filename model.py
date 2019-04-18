@@ -21,7 +21,7 @@ class ResNet_Train():
         print("Initializing Datasets and Dataloaders...")
 
         self._opt = Options().parse()
-        self.model, image_size = self.initialize_model('inception', 2, feature_extract=False, use_pretrained=False)
+        self.model, image_size = self.initialize_model('resnet', 2, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
         data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
@@ -38,8 +38,8 @@ class ResNet_Train():
         self._Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
         self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
         self._cond = self._Tensor(self._opt.batch_size, 2)
-        self._save_path = os.path.join(self._opt.checkpoints_dir, self._opt.name)
-        self._writer = SummaryWriter(self._save_path)
+        self._save_dir = os.path.join(self._opt.checkpoints_dir, self._opt.name)
+        self._writer = SummaryWriter(self._save_dir)
 
 
         self.model = self.model.to(self.device)
@@ -47,7 +47,7 @@ class ResNet_Train():
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
         self.criterion = nn.MSELoss()
-        model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=True)
+        model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
         self._save_network(model, 31)
 
 
