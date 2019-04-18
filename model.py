@@ -35,7 +35,7 @@ class ResNet_Train():
 
         # Detect if we have a GPU available
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self._save_path = os.path.join(self._opt.checkpoints_dir, opt.name)
+        self._save_path = os.path.join(self._opt.checkpoints_dir, self._opt.name)
         self._writer = SummaryWriter(self._save_path)
 
 
