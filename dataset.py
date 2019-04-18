@@ -12,7 +12,7 @@ class DatasetFactory:
     @staticmethod
     def get_by_name(dataset_name, opt, is_for_train):
         if dataset_name == 'mood':
-            from data.MoodDataset import MoodDataset
+            from MoodDataset import MoodDataset
     	    dataset = MoodDataset(opt, is_for_train)
         else:
             raise ValueError("Dataset [%s] not recognized." % dataset_name)
