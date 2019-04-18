@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
-from custom_dataset_data_loader import CustomDatasetDataLoader
+from data.custom_dataset_data_loader import CustomDatasetDataLoader
 from tensorboardX import SummaryWriter
 from options import Options
 

@@ -1,6 +1,6 @@
 import os.path
 import torchvision.transforms as transforms
-from dataset import DatasetBase
+from .dataset import DatasetBase
 #from tqdm import tqdm
 from PIL import Image
 import random
