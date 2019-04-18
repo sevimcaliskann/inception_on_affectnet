@@ -6,6 +6,7 @@ class Options():
     def __init__(self):
         self._parser = argparse.ArgumentParser()
         self._initialized = False
+        self.is_train = True
 
     def initialize(self):
         self._parser.add_argument('--data_dir', type=str, help='path to dataset')
