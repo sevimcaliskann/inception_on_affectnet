@@ -22,6 +22,7 @@ class Options():
         self._parser.add_argument('--name', type=str, default='experiment_1', help='name of the experiment. It decides where to store samples and models')
         self._parser.add_argument('--dataset_mode', type=str, default='aus', help='chooses dataset to be used')
         self._parser.add_argument('--n_threads_test', default=1, type=int, help='# threads for loading data')
+        self._parser.add_argument('--n_threads_train', default=4, type=int, help='# threads for loading data')
         self._parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
         self._parser.add_argument('--serial_batches', action='store_true', help='if true, takes images in order to make batches, otherwise takes them randomly')
         self._parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate for adam')
