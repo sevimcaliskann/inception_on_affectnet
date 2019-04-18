@@ -21,7 +21,7 @@ class ResNet_Train():
         print("Initializing Datasets and Dataloaders...")
 
         self._opt = Options().parse()
-        self.model, image_size = self.initialize_model('resnet', 2, feature_extract=False, use_pretrained=False)
+        self.model, image_size = self.initialize_model('resnet', 8, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
         data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
@@ -37,7 +37,7 @@ class ResNet_Train():
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self._Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
         self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
-        self._cond = self._Tensor(self._opt.batch_size, 2)
+        self._cond = self._Tensor(self._opt.batch_size, 1)
         self._save_dir = os.path.join(self._opt.checkpoints_dir, self._opt.name)
         self._writer = SummaryWriter(self._save_dir)
 
@@ -46,7 +46,7 @@ class ResNet_Train():
         #scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
-        self.criterion = nn.MSELoss()
+        self.criterion = nn.CrossEntropyLoss()
         model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
         self._save_network(model, 31)
 
@@ -104,7 +104,7 @@ class ResNet_Train():
                             outputs = model(self._img)
                             loss = criterion(outputs, self._cond)
 
-                        #_, preds = torch.max(outputs, 1)
+                        _, preds = torch.max(outputs, 1)
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -113,7 +113,7 @@ class ResNet_Train():
 
                     # statistics
                     batch_loss = loss.item()
-                    batch_corrects = torch.sum(torch.abs(outputs-self._cond.data)<0.1)
+                    batch_corrects = torch.sum(preds == self._cond.data)
                     running_loss += batch_loss * self._opt.batch_size
                     running_corrects += batch_corrects
 
