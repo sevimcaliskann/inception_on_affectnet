@@ -47,7 +47,7 @@ class ResNet_Train():
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
         self.criterion = nn.MSELoss()
-        model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
+        model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=True)
         self._save_network(model, 31)
 
 
@@ -97,8 +97,6 @@ class ResNet_Train():
                         if is_inception and phase == 'train':
                             # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
                             outputs, aux_outputs = model(self._img)
-                            outputs.to(self.device)
-                            aux_outputs.to(self.device)
                             loss1 = criterion(outputs, self._cond)
                             loss2 = criterion(aux_outputs, self._cond)
                             loss = loss1 + 0.4*loss2
