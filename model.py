@@ -35,6 +35,9 @@ class ResNet_Train():
 
         # Detect if we have a GPU available
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self._Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
+        self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
+        self._cond = self._Tensor(self._opt.batch_size, 2)
         self._save_path = os.path.join(self._opt.checkpoints_dir, self._opt.name)
         self._writer = SummaryWriter(self._save_path)
 
@@ -76,8 +79,10 @@ class ResNet_Train():
 
                 # Iterate over data.
                 for i_train_batch, train_batch in enumerate(dataloaders[phase]):
-                    inputs = train_batch['img'].to(self.device)
-                    labels = train_batch['cond'].to(self.device)
+                    self._img.resize_(train_batch['img'].size()).copy_(train_batch['img'])
+                    self._cond.resize_(train_batch['cond'].size()).copy_(train_batch['cond'])
+                    #inputs = train_batch['img'].to(self.device)
+                    #labels = train_batch['cond'].to(self.device)
 
                     # zero the parameter gradients
                     optimizer.zero_grad()
@@ -91,13 +96,13 @@ class ResNet_Train():
                         #   but in testing we only consider the final output.
                         if is_inception and phase == 'train':
                             # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
-                            outputs, aux_outputs = model(inputs)
-                            loss1 = criterion(outputs, labels)
-                            loss2 = criterion(aux_outputs, labels)
+                            outputs, aux_outputs = model(self._img)
+                            loss1 = criterion(outputs, self._cond)
+                            loss2 = criterion(aux_outputs, self._cond)
                             loss = loss1 + 0.4*loss2
                         else:
-                            outputs = model(inputs)
-                            loss = criterion(outputs, labels)
+                            outputs = model(self._img)
+                            loss = criterion(outputs, self._cond)
 
                         _, preds = torch.max(outputs, 1)
 
