@@ -46,6 +46,10 @@ class ResNet_Train():
         #scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
+
+        if self._opt.load_epoch>=0:
+            self.load()
+
         self.criterion = nn.MSELoss()
         model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
         self._save_network(model, 31)
@@ -60,10 +64,10 @@ class ResNet_Train():
         best_model_wts = copy.deepcopy(model.state_dict())
         best_acc = 0.0
 
-        #number_iters_train = len(dataloaders['train'])/self._opt.batch_size
-        #number_iters_val = len(dataloaders['val'])/self._opt.batch_size
+        number_iters_train = len(dataloaders['train'])/self._opt.batch_size
+        number_iters_val = len(dataloaders['val'])/self._opt.batch_size
 
-        for epoch in range(num_epochs):
+        for epoch in range(self._opt.load_epoch+1, num_epochs):
             print('Epoch {}/{}'.format(epoch, num_epochs - 1))
             print('-' * 10)
 
@@ -121,9 +125,9 @@ class ResNet_Train():
 
                     #print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, batch_loss, batch_corrects.double()/self._opt.batch_size))
                     if phase=='train':
-                        self.plot_scalars(loss_dict, (i_train_batch+1)*self._opt.batch_size, True)
+                        self.plot_scalars(loss_dict, i_train_batch + number_iters_train*epoch, True)
                     else:
-                        self.plot_scalars(loss_dict, (i_train_batch+1)*self._opt.batch_size, False)
+                        self.plot_scalars(loss_dict, i_train_batch + number_iters_val*epoch, False)
 
 
 
