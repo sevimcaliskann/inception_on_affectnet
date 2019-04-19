@@ -59,7 +59,8 @@ class Options():
                 load_epoch = 0
                 for file in os.listdir(models_dir):
                     if file.startswith("net_epoch_"):
-                        load_epoch = max(load_epoch, int(file.split('_')[2]))
+                        tmp = file.split('_')[2].split('.')[0]
+                        load_epoch = max(load_epoch, int(tmp))
                 self._opt.load_epoch = load_epoch
             else:
                 found = False

@@ -113,11 +113,13 @@ class ResNet_Train():
 
                     # statistics
                     batch_loss = loss.item()
-                    batch_corrects = torch.sum(torch.abs(outputs-self._cond.data)<0.1)
+                    batch_corrects = torch.sum((torch.abs(outputs-self._cond.data)<0.05).all(dim=1))
                     running_loss += batch_loss * self._opt.batch_size
                     running_corrects += batch_corrects
 
                     loss_dict = {'loss':batch_loss, 'acc':batch_corrects.double()/self._opt.batch_size}
+
+                    #print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, batch_loss, batch_corrects.double()/self._opt.batch_size))
                     if phase=='train':
                         self.plot_scalars(loss_dict, (i_train_batch+1)*self._opt.batch_size, True)
                     else:
@@ -128,6 +130,7 @@ class ResNet_Train():
                 epoch_loss = running_loss / len(dataloaders[phase])
                 epoch_acc = running_corrects.double() / len(dataloaders[phase])
 
+                print('END OF EPOCH %d' % (epoch))
                 print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
                 # deep copy the model

@@ -117,7 +117,7 @@ class MoodDataset(DatasetBase):
         if id in self._moods.keys():
             cond = np.array(self._moods[id], dtype = np.float32)
             cond = np.array(cond)
-            cond = (cond+1)/2
+            #cond = (cond+1)/2
             return cond
         else:
             return None
