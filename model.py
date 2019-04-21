@@ -36,8 +36,9 @@ class ResNet_Train():
         # Detect if we have a GPU available
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self._Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
+	self._Target = torch.cuda.LongTensor if torch.cuda.is_available() else torch.Tensor
         self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
-        self._cond = self._Tensor(self._opt.batch_size, 1)
+        self._cond = self._Target(self._opt.batch_size, 1)
         self._save_dir = os.path.join(self._opt.checkpoints_dir, self._opt.name)
         self._writer = SummaryWriter(self._save_dir)
 
@@ -47,7 +48,7 @@ class ResNet_Train():
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
 
-        if self._opt.load_epoch>=0:
+        if self._opt.load_epoch>0:
             self.load()
         self.criterion = nn.CrossEntropyLoss()
         model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
@@ -125,6 +126,9 @@ class ResNet_Train():
                         self.plot_scalars(loss_dict, i_train_batch + number_iters_train*epoch, True)
                     else:
                         self.plot_scalars(loss_dict, i_train_batch + number_iters_val*epoch, False)
+
+		    #print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, loss_dict['loss'], loss_dict['acc']))
+		    #print('Saved step: ', i_train_batch + number_iters_train*epoch)
 
 
 
