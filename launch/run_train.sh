@@ -7,8 +7,8 @@ python model.py \
 --train_ids_file /scratch_net/zinc/csevim/dataset_affectnet_analysis/train_small.csv \
 --test_ids_file /scratch_net/zinc/csevim/dataset_affectnet_analysis/test_mood.csv \
 --affectnet_info_file /srv/glusterfs/csevim/datasets/affectnet/training.csv \
---name resnet_train \
---batch_size 32 \
+--name inception_train \
+--batch_size 64 \
 --checkpoints_dir /srv/glusterfs/csevim/datasets/emotione/checkpoints \
 --load_epoch -1 \
 --dataset_mode mood

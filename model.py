@@ -21,7 +21,7 @@ class ResNet_Train():
         print("Initializing Datasets and Dataloaders...")
 
         self._opt = Options().parse()
-        self.model, image_size = self.initialize_model('resnet', 2, feature_extract=False, use_pretrained=False)
+        self.model, image_size = self.initialize_model('inception', 2, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
         data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
@@ -47,11 +47,11 @@ class ResNet_Train():
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
 
-        if self._opt.load_epoch>=0:
+        if self._opt.load_epoch>0:
             self.load()
 
         self.criterion = nn.MSELoss()
-        model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
+        model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=True)
         self._save_network(model, 31)
 
 
@@ -64,15 +64,17 @@ class ResNet_Train():
         best_model_wts = copy.deepcopy(model.state_dict())
         best_acc = 0.0
 
-        number_iters_train = len(dataloaders['train'])/self._opt.batch_size
-        number_iters_val = len(dataloaders['val'])/self._opt.batch_size
+        number_iters_train = self._dataset_train_size//self._opt.batch_size
+        number_iters_val = self._dataset_test_size//self._opt.batch_size
+	#print('number iters train: ', len(dataloaders['train']))
+	#print('number_iters_val: ', len(dataloaders['val']))
 
         for epoch in range(self._opt.load_epoch+1, num_epochs):
             print('Epoch {}/{}'.format(epoch, num_epochs - 1))
             print('-' * 10)
 
             # Each epoch has a training and validation phase
-            for phase in ['train', 'val']:
+            for phase in ['val', 'train']:
                 if phase == 'train':
                     model.train()  # Set model to training mode
                 else:
