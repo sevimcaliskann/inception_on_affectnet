@@ -21,7 +21,7 @@ class ResNet_Train():
         print("Initializing Datasets and Dataloaders...")
 
         self._opt = Options().parse()
-        self.model, image_size = self.initialize_model('resnet', 8, feature_extract=False, use_pretrained=False)
+        self.model, image_size = self.initialize_model('vgg', 8, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
         data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
@@ -64,8 +64,8 @@ class ResNet_Train():
         best_model_wts = copy.deepcopy(model.state_dict())
         best_acc = 0.0
 
-        number_iters_train = len(dataloaders['train'])/self._opt.batch_size
-        number_iters_val = len(dataloaders['val'])/self._opt.batch_size
+        number_iters_train = self._dataset_train_size//self._opt.batch_size
+        number_iters_val = self._dataset_test_size//self._opt.batch_size
 
         for epoch in range(num_epochs):
             print('Epoch {}/{}'.format(epoch, num_epochs - 1))
