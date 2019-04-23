@@ -69,8 +69,7 @@ class ResNet_Train():
         return moods
 
 
-    @staticmethod
-    def infer_single_image(filepath, transform, model):
+    def infer_single_image(self, filepath, transform, model):
         img = MoodDataset.read_cv2_img(filepath)
         if img is None:
             print('sample %s could not be read!' % filepath)

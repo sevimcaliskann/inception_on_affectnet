@@ -19,8 +19,8 @@ import pickle
 def main():
     print('BEGINING')
     trainer = ResNet_Train()
-    img_dir = os.path.join(trainer._opt.data_dir, trainer._opt.train_images_folder)
-    list_path = trainer._opt.train_ids_file
+    img_dir = os.path.join(trainer._opt.data_dir, trainer._opt.test_images_folder)
+    list_path = trainer._opt.test_ids_file
 
 
     list_of_images = MoodDataset._read_ids(list_path)
@@ -31,22 +31,22 @@ def main():
                                           ])
 
     moods = trainer.infer_list_of_images(img_dir, list_of_images, transform)
-    pickle.dump( moods, open( "/scratch_net/zinc/csevim/log/train_%s.pkl" % trainer._opt.model, "wb" ) )
-    mean_error, std_error, l = trainer.check_sqr_mean_distance(moods, is_test = False)
+    pickle.dump( moods, open( "/scratch_net/zinc/csevim/log/test_%s.pkl" % trainer._opt.model, "wb" ) )
+    mean_error, std_error, l = trainer.check_sqr_mean_distance(moods, is_test = True)
     print('mean error: ', mean_error)
     print('std error: ', std_error)
     print('length of intersection: ', l)
     print('original length: ', len(list_of_images))
-    file = open('log_%s.txt' % trainer._opt.model, 'wb')
-    file.write('mean_error: \n')
-    file.write(str(mean_error) + '\n')
-    file.write('std_error: \n')
-    file.write(str(std_error) + '\n')
-    file.write('length of intersection: \n')
-    file.write(str(l) + '\n')
-    file.write('original length: \n')
-    file.write(str(len(list_of_images)) + '\n')
-    file.close()
+    #file = open('log_%s.txt' % trainer._opt.model, 'wb')
+    #file.write('mean_error: \n')
+    #file.write(str(mean_error) + '\n')
+    #file.write('std_error: \n')
+    #file.write(str(std_error) + '\n')
+    #file.write('length of intersection: \n')
+    #file.write(str(l) + '\n')
+    #file.write('original length: \n')
+    #file.write(str(len(list_of_images)) + '\n')
+    #file.close()
     print('END!')
 
 
