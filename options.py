@@ -28,6 +28,7 @@ class Options():
         self._parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate for adam')
         self._parser.add_argument('--adam_b1', type=float, default=0.5, help='beta1 for G adam')
         self._parser.add_argument('--adam_b2', type=float, default=0.999, help='beta2 for G adam')
+        self._parser.add_argument('--model', type=str, default='resnet', help='models to train')
 
 
 

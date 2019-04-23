@@ -22,5 +22,8 @@ class CustomDatasetDataLoader:
     def load_data(self):
         return self._dataloader
 
+    def return_dataset(self):
+        return self._dataset
+
     def __len__(self):
         return len(self._dataset)
