@@ -23,20 +23,20 @@ class ResNet_Train():
         self._opt = Options().parse()
         self.model, image_size = self.initialize_model('vgg', 8, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
-        data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
-        data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
+        self.data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
+        self.data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
 
         self.dataloaders_dict = {'train': data_loader_train.load_data(), 'val': data_loader_test.load_data()}
 
-        self._dataset_train_size = len(data_loader_train)
-        self._dataset_test_size = len(data_loader_test)
+        self._dataset_train_size = len(self.data_loader_train)
+        self._dataset_test_size = len(self.data_loader_test)
         print('#train images = %d' % self._dataset_train_size)
         print('#test images = %d' % self._dataset_test_size)
 
         # Detect if we have a GPU available
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self._Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
-	self._Target = torch.cuda.LongTensor if torch.cuda.is_available() else torch.Tensor
+        self._Target = torch.cuda.LongTensor if torch.cuda.is_available() else torch.Tensor
         self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
         self._cond = self._Target(self._opt.batch_size, 1)
         self._save_dir = os.path.join(self._opt.checkpoints_dir, self._opt.name)
@@ -51,8 +51,33 @@ class ResNet_Train():
         if self._opt.load_epoch>0:
             self.load()
         self.criterion = nn.CrossEntropyLoss()
-        model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
-        self._save_network(model, 31)
+        #model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
+        #self._save_network(model, 31)
+
+    def infer_single_image(self, filepath, transform, model):
+        img = MoodDataset.read_cv2_img(filepath)
+        if img is None:
+            print('sample %s could not be read!' % filepath)
+            return None
+        img = torch.unsqueeze(transform(Image.fromarray(img)), 0)
+        #self.model.eval()
+        self._img.resize_(img.size()).copy_(img)
+        outputs = model(self._img)
+        outputs = outputs.cpu().detach().numpy()
+        return outputs
+
+    def get_last_fc_single_image(self, image_dir, list_of_images, transform):
+        model_child = nn.Sequential(*list(self.model.children())[:-1])
+        model_child.eval()
+        moods = dict()
+        for img in tqdm(list_of_images):
+            filepath = os.path.join(image_dir, img)
+            outs = self.infer_single_image(filepath, transform, model_child)
+            if outs is not None:
+                moods[img] = outs
+
+        return moods
+
 
 
 
@@ -166,10 +191,18 @@ class ResNet_Train():
         model_ft = None
         input_size = 0
 
-        if model_name == "resnet":
+        if model_name == "resnet18":
             """ Resnet18
             """
             model_ft = models.resnet18(pretrained=use_pretrained)
+            self.set_parameter_requires_grad(model_ft, feature_extract)
+            num_ftrs = model_ft.fc.in_features
+            model_ft.fc = nn.Linear(num_ftrs, num_classes)
+            input_size = 224
+        elif model_name == "resnet50":
+            """ Resnet50
+            """
+            model_ft = models.resnet50(pretrained=use_pretrained)
             self.set_parameter_requires_grad(model_ft, feature_extract)
             num_ftrs = model_ft.fc.in_features
             model_ft.fc = nn.Linear(num_ftrs, num_classes)
@@ -184,7 +217,7 @@ class ResNet_Train():
             model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
             input_size = 224
 
-        elif model_name == "vgg":
+        elif model_name == "vgg11":
             """ VGG11_bn
             """
             model_ft = models.vgg11_bn(pretrained=use_pretrained)
@@ -193,6 +226,22 @@ class ResNet_Train():
             model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
             input_size = 224
 
+        elif model_name == "vgg16":
+            """ VGG16_bn
+            """
+            model_ft = models.vgg16_bn(pretrained=use_pretrained)
+            self.set_parameter_requires_grad(model_ft, feature_extract)
+            num_ftrs = model_ft.classifier[6].in_features
+            model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
+            input_size = 224
+        elif model_name == "vgg19":
+            """ VGG19_bn
+            """
+            model_ft = models.vgg19_bn(pretrained=use_pretrained)
+            self.set_parameter_requires_grad(model_ft, feature_extract)
+            num_ftrs = model_ft.classifier[6].in_features
+            model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
+            input_size = 224
         elif model_name == "squeezenet":
             """ Squeezenet
             """
@@ -283,3 +332,5 @@ class ResNet_Train():
 
 if __name__ == "__main__":
     ResNet_Train()
+    model = trainer.train_model(trainer.model, trainer.dataloaders_dict, trainer.criterion, trainer.optimizer, is_inception=trainer._opt.model=='inception')
+    self._save_network(model, 31)
