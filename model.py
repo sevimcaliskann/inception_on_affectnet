@@ -13,6 +13,9 @@ import copy
 from data.custom_dataset_data_loader import CustomDatasetDataLoader
 from tensorboardX import SummaryWriter
 from options import Options
+from tqdm import tqdm
+from data.MoodDataset import MoodDataset
+from PIL import Image
 
 class ResNet_Train():
     def __init__(self):
@@ -21,12 +24,12 @@ class ResNet_Train():
         print("Initializing Datasets and Dataloaders...")
 
         self._opt = Options().parse()
-        self.model, image_size = self.initialize_model('vgg', 8, feature_extract=False, use_pretrained=False)
+        self.model, image_size = self.initialize_model(self._opt.model, 8, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
         self.data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         self.data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
 
-        self.dataloaders_dict = {'train': data_loader_train.load_data(), 'val': data_loader_test.load_data()}
+        self.dataloaders_dict = {'train': self.data_loader_train.load_data(), 'val': self.data_loader_test.load_data()}
 
         self._dataset_train_size = len(self.data_loader_train)
         self._dataset_test_size = len(self.data_loader_test)
@@ -74,7 +77,7 @@ class ResNet_Train():
             filepath = os.path.join(image_dir, img)
             outs = self.infer_single_image(filepath, transform, model_child)
             if outs is not None:
-                moods[img] = outs
+                moods[img] = np.squeeze(outs, axis=0)
 
         return moods
 

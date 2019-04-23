@@ -57,7 +57,9 @@ class MoodDataset(DatasetBase):
     def __len__(self):
         return self._dataset_size
 
-    def _read_ids(self, file_path):
+
+    @staticmethod
+    def _read_ids(file_path):
         ids = np.loadtxt(file_path, delimiter='\t', dtype=np.str)
         return ids
         #return [id[:-4] for id in ids]
@@ -132,7 +134,9 @@ class MoodDataset(DatasetBase):
         #filepath = os.path.join(filepath, 'face_det_000000.bmp')
         return self.read_cv2_img(filepath), filepath
 
-    def read_cv2_img(self, path):
+
+    @staticmethod
+    def read_cv2_img(path):
         '''
         Read color images
         :param path: Path to image
