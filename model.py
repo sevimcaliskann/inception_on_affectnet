@@ -26,6 +26,14 @@ class ResNet_Train():
         self._opt = Options().parse()
         self.model, image_size = self.initialize_model(self._opt.model, 8, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
+
+        layers = list(self.model.children())
+        num_ftrs = layer[-1].in_features
+        sub_net = layers[:-1]
+        sub_net.append(nn.Linear(num_ftrs, 3))
+        self.model = nn.Sequential(*sub_net)
+        self.emo_layer = nn.Sequential(3, 8)
+
         self.data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         self.data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
 
@@ -41,19 +49,22 @@ class ResNet_Train():
         self._Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
         self._Target = torch.cuda.LongTensor if torch.cuda.is_available() else torch.Tensor
         self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
-        self._cond = self._Target(self._opt.batch_size, 1)
+        self._emo = self._Target(self._opt.batch_size, 1)
+        self._mood = self._Target(self._opt.batch_size, 2)
         self._save_dir = os.path.join(self._opt.checkpoints_dir, self._opt.name)
         self._writer = SummaryWriter(self._save_dir)
 
 
         self.model = self.model.to(self.device)
         #scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
+        params = list(self.model.parameters()) + list(self.emo_layer.parameters())
+        self.optimizer = optim.Adam(params, lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
 
         if self._opt.load_epoch>0:
             self.load()
-        self.criterion = nn.CrossEntropyLoss()
+        self.emo_criterion = nn.CrossEntropyLoss()
+        self.mood_criterion = nn.MSELoss()
         #model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
         #self._save_network(model, 31)
 
@@ -84,12 +95,10 @@ class ResNet_Train():
 
 
 
-    def train_model(self, model, dataloaders, criterion, optimizer, num_epochs=25, is_inception=False):
+    def train_model(self, dataloaders, num_epochs=25, is_inception=False):
         since = time.time()
 
-        #val_acc_history = []
-
-        best_model_wts = copy.deepcopy(model.state_dict())
+        #best_model_wts = copy.deepcopy(self.model.state_dict())
         best_acc = 0.0
 
         number_iters_train = self._dataset_train_size//self._opt.batch_size
@@ -102,22 +111,27 @@ class ResNet_Train():
             # Each epoch has a training and validation phase
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    model.train()  # Set model to training mode
+                    self.model.train()  # Set model to training mode
+                    self.emo_layer.train()
                 else:
-                    model.eval()   # Set model to evaluate mode
+                    self.model.eval()   # Set model to evaluate mode
+                    self.emo_layer.eval()
 
                 running_loss = 0.0
+                running_emo_loss = 0.0
+                running_mood_loss = 0.0
                 running_corrects = 0
 
                 # Iterate over data.
                 for i_train_batch, train_batch in enumerate(dataloaders[phase]):
                     self._img.resize_(train_batch['img'].size()).copy_(train_batch['img'])
-                    self._cond.resize_(train_batch['cond'].size()).copy_(train_batch['cond'])
+                    self._emo.resize_(train_batch['emo'].size()).copy_(train_batch['emo'])
+                    self._mood.resize_(train_batch['mood'].size()).copy_(train_batch['mood'])
                     #inputs = train_batch['img'].to(self.device)
                     #labels = train_batch['cond'].to(self.device)
 
                     # zero the parameter gradients
-                    optimizer.zero_grad()
+                    self.optimizer.zero_grad()
 
                     # forward
                     # track history if only in train
@@ -126,30 +140,42 @@ class ResNet_Train():
                         # Special case for inception because in training it has an auxiliary output. In train
                         #   mode we calculate the loss by summing the final output and the auxiliary output
                         #   but in testing we only consider the final output.
-                        if is_inception and phase == 'train':
+                        #if is_inception and phase == 'train':
                             # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
-                            outputs, aux_outputs = model(self._img)
-                            loss1 = criterion(outputs, self._cond)
-                            loss2 = criterion(aux_outputs, self._cond)
-                            loss = loss1 + 0.4*loss2
-                        else:
-                            outputs = model(self._img)
-                            loss = criterion(outputs, self._cond)
+                        #    outputs, aux_outputs = model(self._img)
+                        #    loss1 = criterion(outputs, self._emo)
+                        #    loss2 = criterion(aux_outputs, self._emo)
+                        #    loss = loss1 + 0.4*loss2
+                        #else:
+                        moods = model(self._img)
+                        emo = emo_layer(moods)
 
-                        _, preds = torch.max(outputs, 1)
+                        moods = moods.narrow(0, 1, 2)
+                        mood_loss = self.mood_criterion(moods, self._mood)*2
+                        emo_loss = self.emo_criterion(emo, self._emo)
+                        loss = mood_loss+emo_loss
+
+                        _, preds = torch.max(emo, 1)
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
-                            optimizer.step()
+                            self.optimizer.step()
 
                     # statistics
                     batch_loss = loss.item()
-                    batch_corrects = torch.sum(preds == self._cond.data)
+                    batch_emo_loss = emo_loss.item()
+                    batch_mood_loss = mood_loss.item()
+                    batch_corrects = torch.sum(preds == self._emo.data)
+
+
                     running_loss += batch_loss * self._opt.batch_size
+                    running_emo_loss += batch_emo_loss * self._opt.batch_size
+                    running_mood_loss += batch_mood_loss * self._opt.batch_size
                     running_corrects += batch_corrects
 
-                    loss_dict = {'loss':batch_loss, 'acc':batch_corrects.double()/self._opt.batch_size}
+                    loss_dict = {'loss':batch_loss, 'acc':batch_corrects.double()/self._opt.batch_size, \
+                                 'emo_loss':batch_emo_loss, 'mood_loss':batch_mood_loss}
                     if phase=='train':
                         self.plot_scalars(loss_dict, i_train_batch + number_iters_train*epoch, True)
                     else:
@@ -161,14 +187,17 @@ class ResNet_Train():
 
 
                 epoch_loss = running_loss / len(dataloaders[phase])
+                epoch_emo_loss = running_emo_loss / len(dataloaders[phase])
+                epoch_mood_loss = running_mood_loss / len(dataloaders[phase])
                 epoch_acc = running_corrects.double() / len(dataloaders[phase])
 
                 print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
+                print('{} Emo Loss: {:.4f} Mood Loss: {:.4f}'.format(phase, epoch_mood_loss, epoch_mood_loss))
 
                 # deep copy the model
                 if phase == 'val' and epoch_acc > best_acc:
                     best_acc = epoch_acc
-                    best_model_wts = copy.deepcopy(model.state_dict())
+                #    best_model_wts = copy.deepcopy(model.state_dict())
                 #if phase == 'val':
                 #    val_acc_history.append(epoch_acc)
             self.save(epoch)
@@ -180,7 +209,6 @@ class ResNet_Train():
         print('Best val Acc: {:4f}'.format(best_acc))
 
         # load best model weights
-        model.load_state_dict(best_model_wts)
         return model
 
     def set_parameter_requires_grad(self, model, feature_extracting):
@@ -286,41 +314,43 @@ class ResNet_Train():
 
     def save(self, label):
         # save networks
-        self._save_network(self.model, label)
-        self._save_optimizer(self.optimizer, label)
+        self._save_network(label)
+        self._save_optimizer(label)
 
     def load(self):
         load_epoch = self._opt.load_epoch
-        self._load_network(self.model, load_epoch)
-        self._load_optimizer(self.optimizer, load_epoch)
+        self._load_network(load_epoch)
+        self._load_optimizer(load_epoch)
 
 
-    def _save_optimizer(self, optimizer, epoch_label):
+    def _save_optimizer(self, epoch_label):
         save_filename = 'opt_epoch_%s.pth' % (epoch_label)
         save_path = os.path.join(self._save_dir, save_filename)
-        torch.save(optimizer.state_dict(), save_path)
+        torch.save(self.optimizer.state_dict(), save_path)
 
-    def _load_optimizer(self, optimizer, epoch_label):
+    def _load_optimizer(self, epoch_label):
         load_filename = 'opt_epoch_%s.pth' % (epoch_label)
         load_path = os.path.join(self._save_dir, load_filename)
         assert os.path.exists(
             load_path), 'Weights file not found. Have you trained a model!? We are not providing one' % load_path
 
-        optimizer.load_state_dict(torch.load(load_path, map_location='cuda:0'))
+        self.optimizer.load_state_dict(torch.load(load_path, map_location='cuda:0'))
         print('loaded optimizer: %s' % load_path)
 
-    def _save_network(self, network, epoch_label):
+    def _save_network(self, epoch_label):
         save_filename = 'net_epoch_%s.pth' % (epoch_label)
         save_path = os.path.join(self._save_dir, save_filename)
-        torch.save(network.state_dict(), save_path)
+        torch.save({'model': self.model.state_dict(), 'emo_layer':self.emo_layer.state_dict()}, save_path)
         print('saved net: %s' % save_path)
 
-    def _load_network(self, network, epoch_label):
+    def _load_network(self, epoch_label):
         load_filename = 'net_epoch_%s.pth' % (epoch_label)
         load_path = os.path.join(self._save_dir, load_filename)
         assert os.path.exists(
             load_path), 'Weights file not found. Have you trained a model!? We are not providing one' % load_path
-        network.load_state_dict(torch.load(load_path, map_location='cuda:0'))
+        checkpoint = torch.load(load_path, map_location='cuda:0')
+        self.model.load_state_dict(checkpoint['model'])
+        self.emo_layer.load_state_dict(checkpoint['emo_layer'])
         print('loaded net: %s' % load_path)
 
 
@@ -335,5 +365,4 @@ class ResNet_Train():
 
 if __name__ == "__main__":
     ResNet_Train()
-    model = trainer.train_model(trainer.model, trainer.dataloaders_dict, trainer.criterion, trainer.optimizer, is_inception=trainer._opt.model=='inception')
-    self._save_network(model, 31)
+    model = trainer.train_model(trainer.dataloaders_dict, is_inception=trainer._opt.model=='inception')

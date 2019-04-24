@@ -20,8 +20,9 @@ class MoodDataset(DatasetBase):
 
         # start_time = time.time()
         img = None
-        cond = None
-        while img is None or cond is None:
+        emo = None
+        mood = None
+        while img is None or mood is None or emo is None:
             # if sample randomly: overwrite index
             if not self._opt.serial_batches:
                 index = random.randint(0, self._dataset_size - 1)
@@ -30,12 +31,15 @@ class MoodDataset(DatasetBase):
             sample_id = self._ids[index]
 
             img, img_path = self._get_img_by_id(sample_id)
-            cond = self._get_cond_by_id(sample_id)
+            emo = self._get_cond_by_id(sample_id)
+            mood = self._get_mood_by_id(sample_id)
 
             if img is None:
                 print 'error reading image %s, skipping sample' % os.path.join(self._imgs_dir, sample_id)
-            if cond is None:
-                print 'error reading cond %s, skipping sample' % sample_id
+            if emo is None:
+                print 'error reading emo %s, skipping sample' % sample_id
+            if mood is None:
+                print 'error reading mood %s, skipping sample' % sample_id
 
 
 
@@ -44,7 +48,8 @@ class MoodDataset(DatasetBase):
 
         # pack data
         sample = {'img': img,
-                  'cond': cond,
+                  'mood': mood,
+                  'emo': emo,
                   'sample_id': sample_id,
                   'img_path': img_path
                   }
@@ -72,7 +77,7 @@ class MoodDataset(DatasetBase):
 
         # read ids
         self._ids = self._read_ids(use_ids_filepath)
-        self._emos = self._read_info(info_filepath)
+        self._moods, self._emos = self._read_info(info_filepath)
         self._ids = list(set(self._ids).intersection(set(self._emos.keys())))
         print('#data: ', len(self._ids))
 
@@ -103,19 +108,19 @@ class MoodDataset(DatasetBase):
         names = [name.split('/')[1] for name in names]
         names = [name.split(',')[0] for name in names]
 
-        #cols = cols[:, -1]
-        #mood = [col.split(',')[-2:] for col in cols]
-        #mood_dict = dict(zip(names, mood))
+        cols = cols[:, -1]
+        mood = [col.split(',')[-2:] for col in cols]
+        mood_dict = dict(zip(names, mood))
 
         emos = np.array([row[-1].split(',')[1] for row in cols], dtype = np.int32)
         emos_dict = dict(zip(names, emos))
 
-        #keys = set(self._ids).intersection(set(mood_dict.keys()))
-        #mood_dict = {k:mood_dict[k] for k in keys}
+        keys = set(self._ids).intersection(set(mood_dict.keys()))
+        mood_dict = {k:mood_dict[k] for k in keys}
 
         keys = set(self._ids).intersection(set(emos_dict.keys()))
         emos_dict = {k:emos_dict[k] for k in keys}
-        return emos_dict
+        return mood_dict, emos_dict
 
     def _get_cond_by_id(self, id):
         emo = self._get_emo_by_id(id)
@@ -124,6 +129,14 @@ class MoodDataset(DatasetBase):
     def _get_emo_by_id(self, id):
         if id in self._emos.keys():
             cond = self._emos[id]
+            return cond
+        else:
+            return None
+
+    def _get_mood_by_id(self, id):
+        if id in self._moods.keys():
+            cond = np.array(self._moods[id], dtype = np.float32)
+            cond = np.array(cond)
             return cond
         else:
             return None
