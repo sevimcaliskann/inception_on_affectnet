@@ -108,12 +108,12 @@ class MoodDataset(DatasetBase):
         names = [name.split('/')[1] for name in names]
         names = [name.split(',')[0] for name in names]
 
+	emos = np.array([row[-1].split(',')[1] for row in cols], dtype = np.int32)
+        emos_dict = dict(zip(names, emos))
+
         cols = cols[:, -1]
         mood = [col.split(',')[-2:] for col in cols]
         mood_dict = dict(zip(names, mood))
-
-        emos = np.array([row[-1].split(',')[1] for row in cols], dtype = np.int32)
-        emos_dict = dict(zip(names, emos))
 
         keys = set(self._ids).intersection(set(mood_dict.keys()))
         mood_dict = {k:mood_dict[k] for k in keys}
