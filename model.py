@@ -36,12 +36,13 @@ class ResNet_Train():
         self._opt.image_size = image_size
 
         layers = list(self.model.children())
-        num_ftrs = layer[-1].in_features
+        num_ftrs = layers[-1].in_features
         sub_net = layers[:-1]
-        sub_net.append(nn.Linear(num_ftrs, 3))
-        self.model = nn.Sequential(*[*sub_net[:-1], Flatten(), *sub_net[-1]])
-        #self.model = nn.Sequential(*sub_net)
-        self.emo_layer = nn.Sequential(3, 8)
+	sub_net.append(Flatten())
+        sub_net.append(nn.Linear(in_features=num_ftrs, out_features=3))
+
+        self.model = nn.Sequential(*sub_net)
+        self.emo_layer = nn.Linear(in_features=3, out_features=8)
 
         self.data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         self.data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
@@ -59,12 +60,13 @@ class ResNet_Train():
         self._Target = torch.cuda.LongTensor if torch.cuda.is_available() else torch.Tensor
         self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
         self._emo = self._Target(self._opt.batch_size, 1)
-        self._mood = self._Target(self._opt.batch_size, 2)
+        self._mood = self._Tensor(self._opt.batch_size, 2)
         self._save_dir = os.path.join(self._opt.checkpoints_dir, self._opt.name)
         self._writer = SummaryWriter(self._save_dir)
 
 
         self.model = self.model.to(self.device)
+	self.emo_layer = self.emo_layer.to(self.device)
         #scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
         params = list(self.model.parameters()) + list(self.emo_layer.parameters())
         self.optimizer = optim.Adam(params, lr=self._opt.lr,
@@ -104,7 +106,7 @@ class ResNet_Train():
 
 
 
-    def train_model(self, dataloaders, num_epochs=25, is_inception=False):
+    def train_model(self, dataloaders, num_epochs=30, is_inception=False):
         since = time.time()
 
         #best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -113,8 +115,8 @@ class ResNet_Train():
         number_iters_train = self._dataset_train_size//self._opt.batch_size
         number_iters_val = self._dataset_test_size//self._opt.batch_size
 
-        for epoch in range(num_epochs):
-            print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        for epoch in range(self._opt.load_epoch+1, num_epochs+1):
+            print('Epoch {}/{}'.format(epoch, num_epochs))
             print('-' * 10)
 
             # Each epoch has a training and validation phase
@@ -156,10 +158,10 @@ class ResNet_Train():
                         #    loss2 = criterion(aux_outputs, self._emo)
                         #    loss = loss1 + 0.4*loss2
                         #else:
-                        moods = model(self._img)
-                        emo = emo_layer(moods)
+                        moods = self.model(self._img)
+                        emo = self.emo_layer(moods)
 
-                        moods = moods.narrow(0, 1, 2)
+                        moods = moods.narrow(1, 1, 2)
                         mood_loss = self.mood_criterion(moods, self._mood)*2
                         emo_loss = self.emo_criterion(emo, self._emo)
                         loss = mood_loss+emo_loss
@@ -373,5 +375,5 @@ class ResNet_Train():
 
 
 if __name__ == "__main__":
-    ResNet_Train()
+    trainer = ResNet_Train()
     model = trainer.train_model(trainer.dataloaders_dict, is_inception=trainer._opt.model=='inception')
