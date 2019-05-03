@@ -34,15 +34,63 @@ class ResNet_Train():
         self._opt = Options().parse()
         self.model, image_size = self.initialize_model(self._opt.model, 8, feature_extract=False, use_pretrained=False)
         self._opt.image_size = image_size
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        layers = list(self.model.children())
-        num_ftrs = layers[-1].in_features
-        sub_net = layers[:-1]
-	sub_net.append(Flatten())
-        sub_net.append(nn.Linear(in_features=num_ftrs, out_features=3))
+        if self._opt.model != 'inception':
+            layers = list(self.model.children())
+            #layers = list(self.model.classifier.children())
+            num_ftrs = layers[-1].in_features
+            sub_net = layers[:-1]
+            sub_net.append(Flatten())
+            sub_net.append(nn.Linear(in_features=num_ftrs, out_features=3))
+            sub_net.append(nn.Hardtanh())
 
-        self.model = nn.Sequential(*sub_net)
-        self.emo_layer = nn.Linear(in_features=3, out_features=8)
+            emo_layers = list()
+            #emo_layers.append(nn.Linear(in_features=3, out_features=512))
+            #emo_layers.append(nn.ReLU())
+            emo_layers.append(nn.Linear(in_features=3, out_features=8))
+
+            self.model = nn.Sequential(*sub_net)
+            #self.model.classifier = nn.Sequential(*sub_net)
+            self.emo_layer = nn.Sequential(*emo_layers)
+            self.model = self.model.to(self.device)
+            self.emo_layer = self.emo_layer.to(self.device)
+            params = list(self.model.parameters()) + list(self.emo_layer.parameters())
+            self.optimizer = optim.Adam(params, lr=self._opt.lr,
+                                                 betas=[self._opt.adam_b1, self._opt.adam_b2])
+        else:
+            num_ftrs = self.model.AuxLogits.fc.in_features
+            layers = list()
+            layers.append(nn.Linear(in_features=num_ftrs, out_features=4))
+            layers.append(nn.Hardtanh())
+            self.model.AuxLogits.fc = nn.Sequential(*layers)
+
+            emo_layers = list()
+            emo_layers.append(nn.Linear(in_features=4, out_features=512))
+            emo_layers.append(nn.ReLU())
+            emo_layers.append(nn.Linear(in_features=512, out_features=8))
+            self.aux_emo_layer = nn.Sequential(*emo_layers)
+
+
+            num_ftrs = self.model.fc.in_features
+            layers = list()
+            layers.append(nn.Linear(in_features=num_ftrs, out_features=4))
+            layers.append(nn.Hardtanh())
+            self.model.fc = nn.Sequential(*layers)
+
+            emo_layers = list()
+            emo_layers.append(nn.Linear(in_features=4, out_features=512))
+            emo_layers.append(nn.ReLU())
+            emo_layers.append(nn.Linear(in_features=512, out_features=8))
+            self.emo_layer = nn.Sequential(*emo_layers)
+
+            self.model = self.model.to(self.device)
+            self.emo_layer = self.emo_layer.to(self.device)
+            self.aux_emo_layer = self.aux_emo_layer.to(self.device)
+            params = list(self.model.parameters()) + list(self.emo_layer.parameters()) + list(self.aux_emo_layer.parameters())
+            self.optimizer = optim.Adam(params, lr=self._opt.lr,
+                                                 betas=[self._opt.adam_b1, self._opt.adam_b2])
+
 
         self.data_loader_train = CustomDatasetDataLoader(self._opt, is_for_train=True)
         self.data_loader_test = CustomDatasetDataLoader(self._opt, is_for_train=False)
@@ -55,7 +103,7 @@ class ResNet_Train():
         print('#test images = %d' % self._dataset_test_size)
 
         # Detect if we have a GPU available
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
         self._Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
         self._Target = torch.cuda.LongTensor if torch.cuda.is_available() else torch.Tensor
         self._img = self._Tensor(self._opt.batch_size, 3, self._opt.image_size, self._opt.image_size)
@@ -65,17 +113,12 @@ class ResNet_Train():
         self._writer = SummaryWriter(self._save_dir)
 
 
-        self.model = self.model.to(self.device)
-	self.emo_layer = self.emo_layer.to(self.device)
-        #scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
-        params = list(self.model.parameters()) + list(self.emo_layer.parameters())
-        self.optimizer = optim.Adam(params, lr=self._opt.lr,
-                                             betas=[self._opt.adam_b1, self._opt.adam_b2])
+
 
         if self._opt.load_epoch>0:
             self.load()
         self.emo_criterion = nn.CrossEntropyLoss()
-        self.mood_criterion = nn.MSELoss()
+        self.mood_criterion = nn.L1Loss()
         #model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
         #self._save_network(model, 31)
 
@@ -92,12 +135,14 @@ class ResNet_Train():
         return outputs
 
     def get_last_fc_single_image(self, image_dir, list_of_images, transform):
-        model_child = nn.Sequential(*list(self.model.children())[:-1])
-        model_child.eval()
+        #model_child = nn.Sequential(*list(self.model.children())[:-1])
+        #model_child.eval()
+	self.model.eval()
+
         moods = dict()
         for img in tqdm(list_of_images):
             filepath = os.path.join(image_dir, img)
-            outs = self.infer_single_image(filepath, transform, model_child)
+            outs = self.infer_single_image(filepath, transform, self.model)
             if outs is not None:
                 moods[img] = np.squeeze(outs, axis=0)
 
@@ -138,8 +183,6 @@ class ResNet_Train():
                     self._img.resize_(train_batch['img'].size()).copy_(train_batch['img'])
                     self._emo.resize_(train_batch['emo'].size()).copy_(train_batch['emo'])
                     self._mood.resize_(train_batch['mood'].size()).copy_(train_batch['mood'])
-                    #inputs = train_batch['img'].to(self.device)
-                    #labels = train_batch['cond'].to(self.device)
 
                     # zero the parameter gradients
                     self.optimizer.zero_grad()
@@ -151,20 +194,25 @@ class ResNet_Train():
                         # Special case for inception because in training it has an auxiliary output. In train
                         #   mode we calculate the loss by summing the final output and the auxiliary output
                         #   but in testing we only consider the final output.
-                        #if is_inception and phase == 'train':
+                        if is_inception and phase=='train':
                             # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
-                        #    outputs, aux_outputs = model(self._img)
-                        #    loss1 = criterion(outputs, self._emo)
-                        #    loss2 = criterion(aux_outputs, self._emo)
-                        #    loss = loss1 + 0.4*loss2
-                        #else:
-                        moods = self.model(self._img)
-                        emo = self.emo_layer(moods)
+                            moods, moods_aux = self.model(self._img)
+                            emo = self.emo_layer(moods)
+                            emo_aux = self.aux_emo_layer(moods_aux)
 
-                        moods = moods.narrow(1, 1, 2)
-                        mood_loss = self.mood_criterion(moods, self._mood)*2
-                        emo_loss = self.emo_criterion(emo, self._emo)
-                        loss = mood_loss+emo_loss
+                            moods = moods.narrow(1, 1, 2)
+                            moods_aux = moods_aux.narrow(1, 1, 2)
+                            mood_loss = (self.mood_criterion(moods, self._mood) + self.mood_criterion(moods_aux, self._mood)*0.4)*10
+                            emo_loss = self.emo_criterion(emo, self._emo) + self.emo_criterion(emo_aux, self._emo)*0.4
+                            loss = mood_loss+emo_loss
+                        else:
+                            moods = self.model(self._img)
+                            emo = self.emo_layer(moods)
+
+                            moods = moods.narrow(1, 1, 2)
+                            mood_loss = self.mood_criterion(moods, self._mood)*10
+                            emo_loss = self.emo_criterion(emo, self._emo)
+                            loss = mood_loss+emo_loss
 
                         _, preds = torch.max(emo, 1)
 
@@ -192,8 +240,6 @@ class ResNet_Train():
                     else:
                         self.plot_scalars(loss_dict, i_train_batch + number_iters_val*epoch, False)
 
-		    #print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, loss_dict['loss'], loss_dict['acc']))
-		    #print('Saved step: ', i_train_batch + number_iters_train*epoch)
 
 
 
@@ -351,7 +397,12 @@ class ResNet_Train():
     def _save_network(self, epoch_label):
         save_filename = 'net_epoch_%s.pth' % (epoch_label)
         save_path = os.path.join(self._save_dir, save_filename)
-        torch.save({'model': self.model.state_dict(), 'emo_layer':self.emo_layer.state_dict()}, save_path)
+        if self._opt.model!='inception':
+            torch.save({'model': self.model.state_dict(), 'emo_layer':self.emo_layer.state_dict()}, save_path)
+        else:
+            torch.save({'model': self.model.state_dict(),\
+             'emo_layer':self.emo_layer.state_dict(), \
+             'aux_emo_layer':self.aux_emo_layer.state_dict()}, save_path)
         print('saved net: %s' % save_path)
 
     def _load_network(self, epoch_label):
@@ -360,8 +411,13 @@ class ResNet_Train():
         assert os.path.exists(
             load_path), 'Weights file not found. Have you trained a model!? We are not providing one' % load_path
         checkpoint = torch.load(load_path, map_location='cuda:0')
-        self.model.load_state_dict(checkpoint['model'])
-        self.emo_layer.load_state_dict(checkpoint['emo_layer'])
+        if self._opt.model!='inception':
+            self.model.load_state_dict(checkpoint['model'])
+            self.emo_layer.load_state_dict(checkpoint['emo_layer'])
+        else:
+            self.model.load_state_dict(checkpoint['model'])
+            self.emo_layer.load_state_dict(checkpoint['emo_layer'])
+            self.aux_emo_layer.load_state_dict(checkpoint['aux_emo_layer'])
         print('loaded net: %s' % load_path)
 
 
