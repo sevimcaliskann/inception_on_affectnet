@@ -7,9 +7,9 @@ CUDA_VISIBLE_DEVICES=$SGE_GPU python model.py \
 --train_ids_file /srv/glusterfs/csevim/dataset_affectnet_analysis/train_small.csv \
 --test_ids_file /srv/glusterfs/csevim/dataset_affectnet_analysis/test_mood.csv \
 --affectnet_info_file /srv/glusterfs/csevim/datasets/affectnet/training.csv \
---name inception_mood_emo_4d \
+--name resnet50_mood_emo_1000 \
 --batch_size 64 \
 --checkpoints_dir /srv/glusterfs/csevim/datasets/emotione/checkpoints \
 --load_epoch -1 \
 --dataset_mode mood \
---model inception
+--model resnet50

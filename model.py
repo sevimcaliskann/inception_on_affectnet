@@ -46,9 +46,9 @@ class ResNet_Train():
             sub_net.append(nn.Hardtanh())
 
             emo_layers = list()
-            #emo_layers.append(nn.Linear(in_features=3, out_features=512))
-            #emo_layers.append(nn.ReLU())
-            emo_layers.append(nn.Linear(in_features=3, out_features=8))
+            emo_layers.append(nn.Linear(in_features=3, out_features=512))
+            emo_layers.append(nn.ReLU())
+            emo_layers.append(nn.Linear(in_features=512, out_features=8))
 
             self.model = nn.Sequential(*sub_net)
             #self.model.classifier = nn.Sequential(*sub_net)
@@ -61,12 +61,12 @@ class ResNet_Train():
         else:
             num_ftrs = self.model.AuxLogits.fc.in_features
             layers = list()
-            layers.append(nn.Linear(in_features=num_ftrs, out_features=4))
+            layers.append(nn.Linear(in_features=num_ftrs, out_features=3))
             layers.append(nn.Hardtanh())
             self.model.AuxLogits.fc = nn.Sequential(*layers)
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=4, out_features=512))
+            emo_layers.append(nn.Linear(in_features=3, out_features=512))
             emo_layers.append(nn.ReLU())
             emo_layers.append(nn.Linear(in_features=512, out_features=8))
             self.aux_emo_layer = nn.Sequential(*emo_layers)
@@ -74,12 +74,12 @@ class ResNet_Train():
 
             num_ftrs = self.model.fc.in_features
             layers = list()
-            layers.append(nn.Linear(in_features=num_ftrs, out_features=4))
+            layers.append(nn.Linear(in_features=num_ftrs, out_features=3))
             layers.append(nn.Hardtanh())
             self.model.fc = nn.Sequential(*layers)
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=4, out_features=512))
+            emo_layers.append(nn.Linear(in_features=3, out_features=512))
             emo_layers.append(nn.ReLU())
             emo_layers.append(nn.Linear(in_features=512, out_features=8))
             self.emo_layer = nn.Sequential(*emo_layers)
@@ -137,7 +137,7 @@ class ResNet_Train():
     def get_last_fc_single_image(self, image_dir, list_of_images, transform):
         #model_child = nn.Sequential(*list(self.model.children())[:-1])
         #model_child.eval()
-	self.model.eval()
+        self.model.eval()
 
         moods = dict()
         for img in tqdm(list_of_images):
@@ -202,7 +202,7 @@ class ResNet_Train():
 
                             moods = moods.narrow(1, 1, 2)
                             moods_aux = moods_aux.narrow(1, 1, 2)
-                            mood_loss = (self.mood_criterion(moods, self._mood) + self.mood_criterion(moods_aux, self._mood)*0.4)*10
+                            mood_loss = (self.mood_criterion(moods, self._mood) + self.mood_criterion(moods_aux, self._mood)*0.4)*1000
                             emo_loss = self.emo_criterion(emo, self._emo) + self.emo_criterion(emo_aux, self._emo)*0.4
                             loss = mood_loss+emo_loss
                         else:
@@ -377,7 +377,7 @@ class ResNet_Train():
     def load(self):
         load_epoch = self._opt.load_epoch
         self._load_network(load_epoch)
-        self._load_optimizer(load_epoch)
+        #self._load_optimizer(load_epoch)
 
 
     def _save_optimizer(self, epoch_label):
@@ -413,7 +413,7 @@ class ResNet_Train():
         checkpoint = torch.load(load_path, map_location='cuda:0')
         if self._opt.model!='inception':
             self.model.load_state_dict(checkpoint['model'])
-            self.emo_layer.load_state_dict(checkpoint['emo_layer'])
+            #self.emo_layer.load_state_dict(checkpoint['emo_layer'])
         else:
             self.model.load_state_dict(checkpoint['model'])
             self.emo_layer.load_state_dict(checkpoint['emo_layer'])

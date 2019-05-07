@@ -14,8 +14,8 @@ import pickle
 def main():
     print('BEGINING')
     trainer = ResNet_Train()
-    img_dir = os.path.join(trainer._opt.data_dir, trainer._opt.test_images_folder)
-    list_path = trainer._opt.test_ids_file
+    img_dir = os.path.join(trainer._opt.data_dir, trainer._opt.train_images_folder)
+    list_path = trainer._opt.train_ids_file
 
 
     list_of_images = MoodDataset._read_ids(list_path)
@@ -26,7 +26,7 @@ def main():
                                           ])
 
     moods = trainer.get_last_fc_single_image(img_dir, list_of_images, transform)
-    pickle.dump( moods, open( "/srv/glusterfs/csevim/datasets/affectnet/test_latent_%s.pkl" % trainer._opt.model, "wb" ) )
+    pickle.dump( moods, open( "/srv/glusterfs/csevim/datasets/affectnet/train_latent_%s.pkl" % trainer._opt.model, "wb" ) )
     print('END!')
 
 
