@@ -45,7 +45,6 @@ class ResNet_Train():
 
 
         self.model = self.model.to(self.device)
-        #scratch_optimizer = optim.SGD(scratch_model.parameters(), lr=0.001, momentum=0.9)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._opt.lr,
                                              betas=[self._opt.adam_b1, self._opt.adam_b2])
 

@@ -11,4 +11,5 @@ python model.py \
 --batch_size 64 \
 --checkpoints_dir /srv/glusterfs/csevim/datasets/emotione/checkpoints \
 --load_epoch -1 \
---dataset_mode mood
+--dataset_mode mood \
+--model resnet50
