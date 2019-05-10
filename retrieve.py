@@ -26,7 +26,7 @@ def main():
                                           ])
 
     moods = trainer.get_last_fc_single_image(img_dir, list_of_images, transform)
-    pickle.dump( moods, open( "/srv/glusterfs/csevim/datasets/affectnet/train_latent_%s.pkl" % trainer._opt.model, "wb" ) )
+    pickle.dump( moods, open( "/srv/glusterfs/csevim/datasets/affectnet/train_1000_latent_%s.pkl" % trainer._opt.model, "wb" ) )
     print('END!')
 
 

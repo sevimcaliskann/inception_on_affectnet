@@ -48,6 +48,10 @@ class ResNet_Train():
             emo_layers = list()
             emo_layers.append(nn.Linear(in_features=3, out_features=512))
             emo_layers.append(nn.ReLU())
+            emo_layers.append(nn.Linear(in_features=512, out_features=1024))
+            emo_layers.append(nn.ReLU())
+            emo_layers.append(nn.Linear(in_features=1024, out_features=512))
+            emo_layers.append(nn.ReLU())
             emo_layers.append(nn.Linear(in_features=512, out_features=8))
 
             self.model = nn.Sequential(*sub_net)
@@ -204,13 +208,15 @@ class ResNet_Train():
                             moods_aux = moods_aux.narrow(1, 1, 2)
                             mood_loss = (self.mood_criterion(moods, self._mood) + self.mood_criterion(moods_aux, self._mood)*0.4)*1000
                             emo_loss = self.emo_criterion(emo, self._emo) + self.emo_criterion(emo_aux, self._emo)*0.4
+                            #mood_loss = torch.abs((-(torch.mean(self._mood) + torch.mean(moods)) + (-torch.mean(self._mood)+torch.mean(moods))*0.4))*100
                             loss = mood_loss+emo_loss
                         else:
                             moods = self.model(self._img)
                             emo = self.emo_layer(moods)
 
                             moods = moods.narrow(1, 1, 2)
-                            mood_loss = self.mood_criterion(moods, self._mood)*10
+                            mood_loss = self.mood_criterion(moods, self._mood)*1000
+                            #mood_loss = torch.abs((-torch.mean(self._mood) + torch.mean(moods)))*100
                             emo_loss = self.emo_criterion(emo, self._emo)
                             loss = mood_loss+emo_loss
 
