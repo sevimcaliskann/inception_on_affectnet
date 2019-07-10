@@ -7,7 +7,7 @@ python model.py \
 --train_ids_file /srv/glusterfs/csevim/dataset_affectnet_analysis/train_small.csv \
 --test_ids_file /srv/glusterfs/csevim/dataset_affectnet_analysis/test_mood.csv \
 --affectnet_info_file /srv/glusterfs/csevim/datasets/affectnet/training.csv \
---name resnet50_3fully_1000 \
+--name resnet50_5d \
 --batch_size 64 \
 --checkpoints_dir /srv/glusterfs/csevim/datasets/emotione/checkpoints \
 --load_epoch -1 \

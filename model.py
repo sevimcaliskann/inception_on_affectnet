@@ -3,6 +3,7 @@ from __future__ import division
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
@@ -16,6 +17,82 @@ from options import Options
 from tqdm import tqdm
 from data.MoodDataset import MoodDataset
 from PIL import Image
+
+def rand_projections(embedding_dim, num_samples=1000):
+    """This function generates `num_samples` random samples from the latent space's unit sphere.
+        Args:
+            embedding_dim (int): embedding dimensionality
+            num_samples (int): number of random projection samples
+        Return:
+            torch.Tensor: tensor of size (num_samples, embedding_dim)
+    """
+    projections = [w / np.sqrt((w**2).sum())  # L2 normalization
+                   for w in np.random.normal(size=(num_samples, embedding_dim))]
+    projections = np.asarray(projections)
+    return torch.from_numpy(projections).type(torch.FloatTensor)
+
+
+def _sliced_wasserstein_distance(encoded_samples,
+                                 distribution_samples,
+                                 num_projections=50,
+                                 p=2,
+                                 device='cuda'):
+    """ Sliced Wasserstein Distance between encoded samples and drawn distribution samples.
+        Args:
+            encoded_samples (toch.Tensor): tensor of encoded training samples
+            distribution_samples (torch.Tensor): tensor of drawn distribution training samples
+            num_projections (int): number of projections to approximate sliced wasserstein distance
+            p (int): power of distance metric
+            device (torch.device): torch device (default 'cpu')
+        Return:
+            torch.Tensor: tensor of wasserstrain distances of size (num_projections, 1)
+    """
+    # derive latent space dimension size from random samples drawn from latent prior distribution
+    embedding_dim = distribution_samples.size(1)
+    # generate random projections in latent space
+    projections = rand_projections(embedding_dim, num_projections).to(device)
+    # calculate projections through the encoded samples
+    encoded_projections = encoded_samples.matmul(projections.transpose(0, 1))
+    # calculate projections through the prior distribution random samples
+    distribution_projections = (distribution_samples.matmul(projections.transpose(0, 1)))
+    # calculate the sliced wasserstein distance by
+    # sorting the samples per random projection and
+    # calculating the difference between the
+    # encoded samples and drawn random samples
+    # per random projection
+    wasserstein_distance = (torch.sort(encoded_projections.transpose(0, 1), dim=1)[0] -
+                            torch.sort(distribution_projections.transpose(0, 1), dim=1)[0])
+    # distance between latent space prior and encoded distributions
+    # power of 2 by default for Wasserstein-2
+    wasserstein_distance = torch.pow(wasserstein_distance, p)
+    # approximate mean wasserstein_distance for each projection
+    return wasserstein_distance.mean()
+
+
+def sliced_wasserstein_distance(encoded_samples,
+                                distribution,
+                                num_projections=1000,
+                                p=2,
+                                device='cuda'):
+    """ Sliced Wasserstein Distance between encoded samples and drawn distribution samples.
+        Args:
+            encoded_samples (toch.Tensor): tensor of encoded training samples
+            distribution_samples (torch.Tensor): tensor of drawn distribution training samples
+            num_projections (int): number of projections to approximate sliced wasserstein distance
+            p (int): power of distance metric
+            device (torch.device): torch device (default 'cpu')
+        Return:
+            torch.Tensor: tensor of wasserstrain distances of size (num_projections, 1)
+    """
+    # derive batch size from encoded samples
+    batch_size = encoded_samples.size(0)
+    # draw random samples from latent space prior distribution
+    z = distribution.to(device)
+    # approximate mean wasserstein_distance between encoded and prior distributions
+    # for each random projection
+    swd = _sliced_wasserstein_distance(encoded_samples, z,
+                                       num_projections, p, device)
+    return swd
 
 
 class Flatten(nn.Module):
@@ -42,20 +119,19 @@ class ResNet_Train():
             num_ftrs = layers[-1].in_features
             sub_net = layers[:-1]
             sub_net.append(Flatten())
-            sub_net.append(nn.Linear(in_features=num_ftrs, out_features=3))
-            sub_net.append(nn.Hardtanh())
+            sub_net.append(nn.Linear(in_features=num_ftrs, out_features=5))
+            sub_net.append(nn.Tanh())
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=3, out_features=512))
+            emo_layers.append(nn.Linear(in_features=5, out_features=512))
             emo_layers.append(nn.ReLU())
-            emo_layers.append(nn.Linear(in_features=512, out_features=1024))
-            emo_layers.append(nn.ReLU())
-            emo_layers.append(nn.Linear(in_features=1024, out_features=512))
-            emo_layers.append(nn.ReLU())
+            #emo_layers.append(nn.Linear(in_features=512, out_features=1024))
+            #emo_layers.append(nn.ReLU())
+            #emo_layers.append(nn.Linear(in_features=1024, out_features=512))
+            #emo_layers.append(nn.ReLU())
             emo_layers.append(nn.Linear(in_features=512, out_features=8))
 
             self.model = nn.Sequential(*sub_net)
-            #self.model.classifier = nn.Sequential(*sub_net)
             self.emo_layer = nn.Sequential(*emo_layers)
             self.model = self.model.to(self.device)
             self.emo_layer = self.emo_layer.to(self.device)
@@ -123,8 +199,7 @@ class ResNet_Train():
             self.load()
         self.emo_criterion = nn.CrossEntropyLoss()
         self.mood_criterion = nn.L1Loss()
-        #model = self.train_model(self.model, self.dataloaders_dict, self.criterion, self.optimizer, num_epochs=30, is_inception=False)
-        #self._save_network(model, 31)
+
 
     def infer_single_image(self, filepath, transform, model):
         img = MoodDataset.read_cv2_img(filepath)
@@ -150,12 +225,13 @@ class ResNet_Train():
             if outs is not None:
                 moods[img] = np.squeeze(outs, axis=0)
 
+
         return moods
 
 
 
 
-    def train_model(self, dataloaders, num_epochs=30, is_inception=False):
+    def train_model(self, dataloaders, num_epochs=40, is_inception=False):
         since = time.time()
 
         #best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -180,6 +256,7 @@ class ResNet_Train():
                 running_loss = 0.0
                 running_emo_loss = 0.0
                 running_mood_loss = 0.0
+                running_redundant_loss = 0.0
                 running_corrects = 0
 
                 # Iterate over data.
@@ -214,11 +291,20 @@ class ResNet_Train():
                             moods = self.model(self._img)
                             emo = self.emo_layer(moods)
 
-                            moods = moods.narrow(1, 1, 2)
+                            redundant = moods.narrow(1, 2, moods.size(1)-2)
+                            redundant_l2norm = torch.sqrt(torch.sum(redundant ** 2, dim=1))
+                            redundant_loss = torch.mean((redundant_l2norm - 1) ** 2)
+                            #redundant_loss = 1-torch.sum(torch.norm(redundant, dim=1))/self._opt.batch_size)
+
+
+                            moods = moods.narrow(1, 0, 2)
                             mood_loss = self.mood_criterion(moods, self._mood)*1000
-                            #mood_loss = torch.abs((-torch.mean(self._mood) + torch.mean(moods)))*100
+                            #mood_loss = (self.mood_criterion(moods, self._mood)/redundant)*1000
+
+
+
                             emo_loss = self.emo_criterion(emo, self._emo)
-                            loss = mood_loss+emo_loss
+                            loss = emo_loss + redundant_loss + mood_loss
 
                         _, preds = torch.max(emo, 1)
 
@@ -231,16 +317,19 @@ class ResNet_Train():
                     batch_loss = loss.item()
                     batch_emo_loss = emo_loss.item()
                     batch_mood_loss = mood_loss.item()
+                    batch_redundant_loss = redundant_loss.item()
                     batch_corrects = torch.sum(preds == self._emo.data)
 
 
                     running_loss += batch_loss * self._opt.batch_size
                     running_emo_loss += batch_emo_loss * self._opt.batch_size
                     running_mood_loss += batch_mood_loss * self._opt.batch_size
+                    running_redundant_loss += batch_redundant_loss * self._opt.batch_size
                     running_corrects += batch_corrects
 
                     loss_dict = {'loss':batch_loss, 'acc':batch_corrects.double()/self._opt.batch_size, \
-                                 'emo_loss':batch_emo_loss, 'mood_loss':batch_mood_loss}
+                                 'emo_loss':batch_emo_loss, 'mood_loss':batch_mood_loss, 'redundant_loss': batch_redundant_loss}
+
                     if phase=='train':
                         self.plot_scalars(loss_dict, i_train_batch + number_iters_train*epoch, True)
                     else:
@@ -249,27 +338,22 @@ class ResNet_Train():
 
 
 
-                epoch_loss = running_loss / len(dataloaders[phase])
-                epoch_emo_loss = running_emo_loss / len(dataloaders[phase])
-                epoch_mood_loss = running_mood_loss / len(dataloaders[phase])
-                epoch_acc = running_corrects.double() / len(dataloaders[phase])
+                epoch_loss = running_loss / (len(dataloaders[phase])*self._opt.batch_size)
+                epoch_emo_loss = running_emo_loss / (len(dataloaders[phase])*self._opt.batch_size)
+                epoch_mood_loss = running_mood_loss / (len(dataloaders[phase])*self._opt.batch_size)
+                epoch_redundant_loss = running_redundant_loss / (len(dataloaders[phase])*self._opt.batch_size)
+                epoch_acc = running_corrects.double() / (len(dataloaders[phase])*self._opt.batch_size)
 
                 print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
-                print('{} Emo Loss: {:.4f} Mood Loss: {:.4f}'.format(phase, epoch_mood_loss, epoch_mood_loss))
+                #print('{} Emo Loss: {:.4f} Mood Loss: {:.4f}'.format(phase, epoch_mood_loss, epoch_mood_loss))
+                print('{} Emo Loss: {:.4f} Mood Loss: {:.4f}, Redundant Loss: {:4f}'.format(phase, epoch_mood_loss, epoch_mood_loss, epoch_redundant_loss))
 
-                # deep copy the model
-                if phase == 'val' and epoch_acc > best_acc:
-                    best_acc = epoch_acc
-                #    best_model_wts = copy.deepcopy(model.state_dict())
-                #if phase == 'val':
-                #    val_acc_history.append(epoch_acc)
             self.save(epoch)
 
 
         time_elapsed = time.time() - since
 
         print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-        print('Best val Acc: {:4f}'.format(best_acc))
 
         # load best model weights
         return model
@@ -383,7 +467,7 @@ class ResNet_Train():
     def load(self):
         load_epoch = self._opt.load_epoch
         self._load_network(load_epoch)
-        #self._load_optimizer(load_epoch)
+        self._load_optimizer(load_epoch)
 
 
     def _save_optimizer(self, epoch_label):
@@ -419,7 +503,7 @@ class ResNet_Train():
         checkpoint = torch.load(load_path, map_location='cuda:0')
         if self._opt.model!='inception':
             self.model.load_state_dict(checkpoint['model'])
-            #self.emo_layer.load_state_dict(checkpoint['emo_layer'])
+            self.emo_layer.load_state_dict(checkpoint['emo_layer'])
         else:
             self.model.load_state_dict(checkpoint['model'])
             self.emo_layer.load_state_dict(checkpoint['emo_layer'])
