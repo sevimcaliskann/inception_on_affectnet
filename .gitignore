@@ -1,0 +1,9 @@
+data/MoodDataset.pyc
+data/__init__.pyc
+data/custom_dataset_data_loader.pyc
+data/dataset.pyc
+log_resnet18.txt
+model.pyc
+options.pyc
+runs/
+
