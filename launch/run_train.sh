@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 python model.py \
---data_dir /srv/beegfs02/scratch/emotion_perception/data/csevim/datasets \
+--data_dir /srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/affectnet \
 --train_images_folder cropped2 \
 --test_images_folder cropped2 \
 --train_ids_file /srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/dataset_affectnet_analysis/train_small.csv \
