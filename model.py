@@ -119,11 +119,11 @@ class ResNet_Train():
             num_ftrs = layers[-1].in_features
             sub_net = layers[:-1]
             sub_net.append(Flatten())
-            sub_net.append(nn.Linear(in_features=num_ftrs, out_features=5))
+            sub_net.append(nn.Linear(in_features=num_ftrs, out_features=2))
             sub_net.append(nn.Tanh())
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=5, out_features=512))
+            emo_layers.append(nn.Linear(in_features=2, out_features=512))
             emo_layers.append(nn.ReLU())
             #emo_layers.append(nn.Linear(in_features=512, out_features=1024))
             #emo_layers.append(nn.ReLU())
@@ -141,12 +141,12 @@ class ResNet_Train():
         else:
             num_ftrs = self.model.AuxLogits.fc.in_features
             layers = list()
-            layers.append(nn.Linear(in_features=num_ftrs, out_features=3))
+            layers.append(nn.Linear(in_features=num_ftrs, out_features=2))
             layers.append(nn.Hardtanh())
             self.model.AuxLogits.fc = nn.Sequential(*layers)
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=3, out_features=512))
+            emo_layers.append(nn.Linear(in_features=2, out_features=512))
             emo_layers.append(nn.ReLU())
             emo_layers.append(nn.Linear(in_features=512, out_features=8))
             self.aux_emo_layer = nn.Sequential(*emo_layers)
@@ -154,12 +154,12 @@ class ResNet_Train():
 
             num_ftrs = self.model.fc.in_features
             layers = list()
-            layers.append(nn.Linear(in_features=num_ftrs, out_features=3))
+            layers.append(nn.Linear(in_features=num_ftrs, out_features=2))
             layers.append(nn.Hardtanh())
             self.model.fc = nn.Sequential(*layers)
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=3, out_features=512))
+            emo_layers.append(nn.Linear(in_features=2, out_features=512))
             emo_layers.append(nn.ReLU())
             emo_layers.append(nn.Linear(in_features=512, out_features=8))
             self.emo_layer = nn.Sequential(*emo_layers)
@@ -198,7 +198,7 @@ class ResNet_Train():
         if self._opt.load_epoch>0:
             self.load()
         self.emo_criterion = nn.CrossEntropyLoss()
-        self.mood_criterion = nn.L1Loss()
+        self.mood_criterion = nn.L2Loss()
 
 
     def infer_single_image(self, filepath, transform, model):
@@ -281,8 +281,8 @@ class ResNet_Train():
                             emo = self.emo_layer(moods)
                             emo_aux = self.aux_emo_layer(moods_aux)
 
-                            moods = moods.narrow(1, 1, 2)
-                            moods_aux = moods_aux.narrow(1, 1, 2)
+                            #moods = moods.narrow(1, 1, 2)
+                            #moods_aux = moods_aux.narrow(1, 1, 2)
                             mood_loss = (self.mood_criterion(moods, self._mood) + self.mood_criterion(moods_aux, self._mood)*0.4)*1000
                             emo_loss = self.emo_criterion(emo, self._emo) + self.emo_criterion(emo_aux, self._emo)*0.4
                             #mood_loss = torch.abs((-(torch.mean(self._mood) + torch.mean(moods)) + (-torch.mean(self._mood)+torch.mean(moods))*0.4))*100
@@ -291,13 +291,14 @@ class ResNet_Train():
                             moods = self.model(self._img)
                             emo = self.emo_layer(moods)
 
-                            redundant = moods.narrow(1, 2, moods.size(1)-2)
-                            redundant_l2norm = torch.sqrt(torch.sum(redundant ** 2, dim=1))
-                            redundant_loss = torch.mean((redundant_l2norm - 1) ** 2)
+                            #redundant = moods.narrow(1, 2, moods.size(1)-2)
+                            #redundant_l2norm = torch.sqrt(torch.sum(redundant ** 2, dim=1))
+                            redundant_l2norm = torch.sqrt(torch.sum(moods ** 2, dim=1))
+                            redundant_loss = torch.mean((redundant_l2norm - 1) ** 2)*10
                             #redundant_loss = 1-torch.sum(torch.norm(redundant, dim=1))/self._opt.batch_size)
 
 
-                            moods = moods.narrow(1, 0, 2)
+                            #moods = moods.narrow(1, 0, 2)
                             mood_loss = self.mood_criterion(moods, self._mood)*1000
                             #mood_loss = (self.mood_criterion(moods, self._mood)/redundant)*1000
 
