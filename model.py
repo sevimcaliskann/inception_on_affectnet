@@ -198,7 +198,7 @@ class ResNet_Train():
         if self._opt.load_epoch>0:
             self.load()
         self.emo_criterion = nn.CrossEntropyLoss()
-        self.mood_criterion = nn.L2Loss()
+        self.mood_criterion = nn.MSELoss()
 
 
     def infer_single_image(self, filepath, transform, model):
