@@ -151,7 +151,7 @@ class MoodDataset(DatasetBase):
             return None
 
     def _get_img_by_id(self, id):
-        filepath = os.path.join(self._imgs_dir, id)
+        filepath = os.path.join(self._imgs_dir, id + '.jpg')
         #filepath = os.path.join(self._imgs_dir, id+'_aligned')
         #filepath = os.path.join(filepath, 'face_det_000000.bmp')
         return self.read_cv2_img(filepath), filepath
