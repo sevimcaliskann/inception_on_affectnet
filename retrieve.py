@@ -26,7 +26,7 @@ def main():
                                           ])
 
     moods = trainer.get_last_fc_single_image(img_dir, list_of_images, transform)
-    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/affectnet/train_sept_4d_%s.pkl" % trainer._opt.model, "wb" ) )
+    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/affectnet/train_sept_2d_%s.pkl" % trainer._opt.model, "wb" ) )
     #pickle.dump( moods, open( "/srv/glusterfs/csevim/example_images_%s.pkl" % trainer._opt.model, "wb" ) )
     print('END!')
 
@@ -44,7 +44,7 @@ def main():
                                           ])
 
     moods = trainer.get_last_fc_single_image(img_dir, list_of_images, transform)
-    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/affectnet/test_sept_4d_%s.pkl" % trainer._opt.model, "wb" ) )
+    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/affectnet/test_sept_2d_%s.pkl" % trainer._opt.model, "wb" ) )
     print('END!')
 
 
