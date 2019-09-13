@@ -119,11 +119,11 @@ class ResNet_Train():
             num_ftrs = layers[-1].in_features
             sub_net = layers[:-1]
             sub_net.append(Flatten())
-            sub_net.append(nn.Linear(in_features=num_ftrs, out_features=2))
+            sub_net.append(nn.Linear(in_features=num_ftrs, out_features=self._opt.bottleneck_size))
             sub_net.append(nn.Tanh())
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=2, out_features=512))
+            emo_layers.append(nn.Linear(in_features=self._opt.bottleneck_size, out_features=512))
             emo_layers.append(nn.ReLU())
             #emo_layers.append(nn.Linear(in_features=512, out_features=1024))
             #emo_layers.append(nn.ReLU())
@@ -141,12 +141,12 @@ class ResNet_Train():
         else:
             num_ftrs = self.model.AuxLogits.fc.in_features
             layers = list()
-            layers.append(nn.Linear(in_features=num_ftrs, out_features=2))
+            layers.append(nn.Linear(in_features=num_ftrs, out_features=self._opt.bottleneck_size))
             layers.append(nn.Hardtanh())
             self.model.AuxLogits.fc = nn.Sequential(*layers)
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=2, out_features=512))
+            emo_layers.append(nn.Linear(in_features=self._opt.bottleneck_size, out_features=512))
             emo_layers.append(nn.ReLU())
             emo_layers.append(nn.Linear(in_features=512, out_features=8))
             self.aux_emo_layer = nn.Sequential(*emo_layers)
@@ -154,12 +154,12 @@ class ResNet_Train():
 
             num_ftrs = self.model.fc.in_features
             layers = list()
-            layers.append(nn.Linear(in_features=num_ftrs, out_features=2))
+            layers.append(nn.Linear(in_features=num_ftrs, out_features=self._opt.bottleneck_size))
             layers.append(nn.Hardtanh())
             self.model.fc = nn.Sequential(*layers)
 
             emo_layers = list()
-            emo_layers.append(nn.Linear(in_features=2, out_features=512))
+            emo_layers.append(nn.Linear(in_features=self._opt.bottleneck_size, out_features=512))
             emo_layers.append(nn.ReLU())
             emo_layers.append(nn.Linear(in_features=512, out_features=8))
             self.emo_layer = nn.Sequential(*emo_layers)

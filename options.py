@@ -18,6 +18,7 @@ class Options():
         self._parser.add_argument('--load_epoch', type=int, default=-1, help='which epoch to load? set to -1 to use latest cached model')
         self._parser.add_argument('--batch_size', type=int, default=4, help='input batch size')
         self._parser.add_argument('--image_size', type=int, default=128, help='input image size')
+        self._parser.add_argument('--bottleneck_size', type=int, default=2, help='dimension of bottleneck')
         self._parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
         self._parser.add_argument('--name', type=str, default='experiment_1', help='name of the experiment. It decides where to store samples and models')
         self._parser.add_argument('--dataset_mode', type=str, default='aus', help='chooses dataset to be used')

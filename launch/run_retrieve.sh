@@ -12,4 +12,5 @@ python retrieve.py \
 --checkpoints_dir /srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/emotione/checkpoints \
 --load_epoch -1 \
 --dataset_mode mood \
---model resnet50
+--model resnet50 \
+--bottleneck_size 4
