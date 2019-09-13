@@ -35,7 +35,7 @@ class MoodDataset(DatasetBase):
             mood = self._get_mood_by_id(sample_id)
 
             if img is None:
-                print 'error reading image %s, skipping sample' % os.path.join(self._imgs_dir, sample_id)
+                print 'error reading image %s, skipping sample' % os.path.join(img_path)
             if emo is None:
                 print 'error reading emo %s, skipping sample' % sample_id
             if mood is None:
