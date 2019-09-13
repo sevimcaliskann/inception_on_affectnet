@@ -77,8 +77,12 @@ class MoodDataset(DatasetBase):
 
         # read ids
         self._ids = self._read_ids(use_ids_filepath)
-        self._moods, self._emos = self._read_info(info_filepath)
-        self._ids = list(set(self._ids).intersection(set(self._emos.keys())))
+        if info_filepath[-4:]=='.csv':
+            self._moods, self._emos = self._read_info(info_filepath)
+            self._ids = list(set(self._ids).intersection(set(self._emos.keys())))
+        elif info_filepath[-4:]=='.pkl':
+            self._moods = self._read_info(info_filepath)
+            self._ids = list(set(self._ids).intersection(set(self._moods.keys())))
         print('#data: ', len(self._ids))
 
         # dataset size
@@ -101,26 +105,31 @@ class MoodDataset(DatasetBase):
         self._transform = transforms.Compose(transform_list)
 
     def _read_info(self, file_path):
-        ids = np.loadtxt(file_path, delimiter = '\n', dtype = np.str)
-        ids = ids[1:]
-        cols = np.array([id.split(';') for id in ids])
-        names = cols[:, 0]
-        names = [name.split('/')[1] for name in names]
-        names = [name.split(',')[0] for name in names]
+        if file_path[-4:]=='.csv':
+            ids = np.loadtxt(file_path, delimiter = '\n', dtype = np.str)
+            ids = ids[1:]
+            cols = np.array([id.split(';') for id in ids])
+            names = cols[:, 0]
+            names = [name.split('/')[1] for name in names]
+            names = [name.split(',')[0] for name in names]
 
-	emos = np.array([row[-1].split(',')[1] for row in cols], dtype = np.int32)
-        emos_dict = dict(zip(names, emos))
+            emos = np.array([row[-1].split(',')[1] for row in cols], dtype = np.int32)
+            emos_dict = dict(zip(names, emos))
 
-        cols = cols[:, -1]
-        mood = [col.split(',')[-2:] for col in cols]
-        mood_dict = dict(zip(names, mood))
+            cols = cols[:, -1]
+            mood = [col.split(',')[-2:] for col in cols]
+            mood_dict = dict(zip(names, mood))
 
-        keys = set(self._ids).intersection(set(mood_dict.keys()))
-        mood_dict = {k:mood_dict[k] for k in keys}
+            keys = set(self._ids).intersection(set(mood_dict.keys()))
+            mood_dict = {k:mood_dict[k] for k in keys}
 
-        keys = set(self._ids).intersection(set(emos_dict.keys()))
-        emos_dict = {k:emos_dict[k] for k in keys}
-        return mood_dict, emos_dict
+            keys = set(self._ids).intersection(set(emos_dict.keys()))
+            emos_dict = {k:emos_dict[k] for k in keys}
+            return mood_dict, emos_dict
+        elif file_path[-4:]=='.pkl':
+            with open(file_path, 'rb') as f:
+                data = pickle.load(f)
+                return data
 
     def _get_cond_by_id(self, id):
         emo = self._get_emo_by_id(id)
