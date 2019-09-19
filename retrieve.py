@@ -19,6 +19,7 @@ def main():
 
 
     list_of_images = MoodDataset._read_ids(list_path)
+    print('#images to be annotated: ', len(list_of_images))
     transform = transforms.Compose([transforms.Resize(size=(trainer._opt.image_size, trainer._opt.image_size)),
                                           transforms.ToTensor(),
                                           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -26,13 +27,12 @@ def main():
                                           ])
 
     moods = trainer.get_last_fc_single_image(img_dir, list_of_images, transform)
-    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/affectnet/train_sept_2d_%s.pkl" % trainer._opt.model, "wb" ) )
-    #pickle.dump( moods, open( "/srv/glusterfs/csevim/example_images_%s.pkl" % trainer._opt.model, "wb" ) )
+    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/affwild/aff_wild_annotations_bboxes_landmarks_new/train_sept_2d_%s.pkl" % trainer._opt.model, "wb" ) )
     print('END!')
 
 
 
-    img_dir = os.path.join(trainer._opt.data_dir, trainer._opt.test_images_folder)
+    '''img_dir = os.path.join(trainer._opt.data_dir, trainer._opt.test_images_folder)
     list_path = trainer._opt.test_ids_file
 
 
@@ -44,8 +44,8 @@ def main():
                                           ])
 
     moods = trainer.get_last_fc_single_image(img_dir, list_of_images, transform)
-    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/datasets/affectnet/test_sept_2d_%s.pkl" % trainer._opt.model, "wb" ) )
-    print('END!')
+    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/affwild/aff_wild_annotations_bboxes_landmarks_new/test_sept_2d_%s.pkl" % trainer._opt.model, "wb" ) )
+    # print('END!')'''
 
 
 
