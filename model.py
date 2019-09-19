@@ -220,7 +220,7 @@ class ResNet_Train():
 
         moods = dict()
         for img in tqdm(list_of_images):
-            filepath = os.path.join(image_dir, img)
+            filepath = os.path.join(image_dir, img+'.jpg')
             outs = self.infer_single_image(filepath, transform, self.model)
             if outs is not None:
                 moods[img] = np.squeeze(outs, axis=0)
