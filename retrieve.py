@@ -27,7 +27,7 @@ def main():
                                           ])
 
     moods = trainer.get_last_fc_single_image(img_dir, list_of_images, transform)
-    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/affwild/aff_wild_annotations_bboxes_landmarks_new/train_sept_2d_%s.pkl" % trainer._opt.model, "wb" ) )
+    pickle.dump( moods, open( "/srv/beegfs02/scratch/emotion_perception/data/csevim/affwild/aff_wild_annotations_bboxes_landmarks_new/all_cropped_2d_%s.pkl" % trainer._opt.model, "wb" ) )
     print('END!')
 
 
